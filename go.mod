@@ -2,7 +2,10 @@ module github.com/alingse/go-pprof-md
 
 go 1.24.0
 
-require github.com/spf13/cobra v1.10.2
+require (
+	github.com/google/pprof v0.0.0-20260202012954-cb029daf43ef
+	github.com/spf13/cobra v1.10.2
+)
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect

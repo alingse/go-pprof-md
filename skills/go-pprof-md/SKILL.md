@@ -16,17 +16,31 @@ go install github.com/alingse/go-pprof-md/cmd/go-pprof-md@latest
 git clone https://github.com/alingse/go-pprof-md.git && cd go-pprof-md && make build
 ```
 
-## Basic Usage
+## Commands
+
+### show - Display a single profile
 
 ```bash
-# Read pprof file and output markdown to stdout
-go-pprof-md analyze <profile-file>
+# Output markdown to stdout
+go-pprof-md show <profile-file>
 
 # Save to file
-go-pprof-md analyze <profile-file> -o output.md
+go-pprof-md show <profile-file> -o output.md
+```
+
+### diff - Compare two profiles
+
+```bash
+# Compare base vs new profile
+go-pprof-md diff <base.prof> <new.prof>
+
+# Save diff report to file
+go-pprof-md diff base.prof new.prof -o regression.md
 ```
 
 ## Options
+
+### show options
 
 | Flag | Description | Default |
 |------|-------------|---------|
@@ -35,20 +49,35 @@ go-pprof-md analyze <profile-file> -o output.md
 | `-t, --type <type>` | Profile type: cpu, heap, goroutine, mutex | auto-detect |
 | `--no-ai-prompt` | Disable AI analysis prompt section | false |
 
+### diff options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-o, --output <file>` | Output file path | stdout |
+| `-n, --top <number>` | Number of top changed functions to show | 20 |
+| `-b, --base-type <type>` | Base profile type | auto-detect |
+| `-t, --new-type <type>` | New profile type | auto-detect |
+
 ## Examples
 
 ```bash
-# Convert CPU profile to markdown
-go-pprof-md analyze cpu.prof
+# Show CPU profile
+go-pprof-md show cpu.prof
 
 # Save heap analysis to file, show top 50 functions
-go-pprof-md analyze heap.prof -o heap-report.md -n 50
+go-pprof-md show heap.prof -o heap-report.md -n 50
+
+# Compare profiles before and after optimization
+go-pprof-md diff before.prof after.prof
+
+# Regression test: compare against baseline
+go-pprof-md diff baseline.prof current.prof -o regression.md
 
 # Specify profile type explicitly
-go-pprof-md analyze profile.prof -t goroutine -o report.md
+go-pprof-md show profile.prof -t goroutine -o report.md
 
 # Disable AI prompt section
-go-pprof-md analyze mutex.prof --no-ai-prompt
+go-pprof-md show mutex.prof --no-ai-prompt
 ```
 
 ## Supported Profile Types
@@ -58,4 +87,4 @@ go-pprof-md analyze mutex.prof --no-ai-prompt
 - **goroutine**: Goroutine stack traces
 - **mutex**: Mutex contention profiling
 
-Auto-detection reads the profile file to determine type.
+Auto-detection reads the profile file to determine type. For `diff`, both profiles must be the same type.

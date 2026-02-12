@@ -10,33 +10,33 @@ import (
 )
 
 var (
-	outputFile string
-	topN       int
-	noAIPrompt bool
+	outputFile  string
+	topN        int
+	noAIPrompt  bool
 	profileType string
 )
 
-var analyzeCmd = &cobra.Command{
-	Use:   "analyze <pprof-file>",
-	Short: "Analyze a pprof file and generate markdown report",
-	Long: `Analyze a pprof file (CPU, heap, goroutine, or mutex) and
-generate a markdown report optimized for AI analysis.
+var showCmd = &cobra.Command{
+	Use:   "show <pprof-file>",
+	Short: "Show a pprof file as markdown report",
+	Long: `Show a pprof file (CPU, heap, goroutine, or mutex) as
+a markdown report optimized for AI analysis.
 
 The profile type is auto-detected from the file content.`,
 	Args: cobra.ExactArgs(1),
-	RunE: runAnalyze,
+	RunE: runShow,
 }
 
 func init() {
-	rootCmd.AddCommand(analyzeCmd)
+	rootCmd.AddCommand(showCmd)
 
-	analyzeCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file (default: stdout)")
-	analyzeCmd.Flags().IntVarP(&topN, "top", "n", 20, "Number of top functions to display")
-	analyzeCmd.Flags().BoolVar(&noAIPrompt, "no-ai-prompt", false, "Disable AI analysis prompt")
-	analyzeCmd.Flags().StringVarP(&profileType, "type", "t", "", "Profile type (cpu, heap, goroutine, mutex). Auto-detected if not specified")
+	showCmd.Flags().StringVarP(&outputFile, "output", "o", "", "Output file (default: stdout)")
+	showCmd.Flags().IntVarP(&topN, "top", "n", 20, "Number of top functions to display")
+	showCmd.Flags().BoolVar(&noAIPrompt, "no-ai-prompt", false, "Disable AI analysis prompt")
+	showCmd.Flags().StringVarP(&profileType, "type", "t", "", "Profile type (cpu, heap, goroutine, mutex). Auto-detected if not specified")
 }
 
-func runAnalyze(cmd *cobra.Command, args []string) error {
+func runShow(cmd *cobra.Command, args []string) error {
 	filename := args[0]
 
 	// Check if file exists

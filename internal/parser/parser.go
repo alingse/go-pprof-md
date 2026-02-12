@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"time"
+
+	"github.com/google/pprof/profile"
 )
 
 // ProfileType represents the type of pprof profile
@@ -85,23 +87,19 @@ func NewParser(profileType ProfileType) Parser {
 
 // DetectProfileType auto-detects the profile type from file content
 func DetectProfileType(filename string) (ProfileType, error) {
-	data, err := os.ReadFile(filename)
+	f, err := os.Open(filename)
 	if err != nil {
-		return "", fmt.Errorf("failed to read file: %w", err)
+		return "", fmt.Errorf("failed to open file: %w", err)
 	}
+	defer f.Close()
 
-	// Check for gzip magic number (pprof files are gzipped protobuf)
-	if len(data) < 2 {
-		return "", fmt.Errorf("file too short to be a valid profile")
-	}
-
-	// Try to parse and detect type from protobuf
-	prof, err := parseProtoProfile(data)
+	// Use official pprof library to parse
+	prof, err := profile.Parse(f)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse profile: %w", err)
 	}
 
-	return detectFromSampleType(prof)
+	return detectProfileTypeFromSampleType(prof)
 }
 
 // Parse parses a pprof file with auto-detected type
