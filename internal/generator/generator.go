@@ -104,24 +104,28 @@ func (g *Generator) getMainTemplateContent() string {
 
 ## Top {{ .Type }} Functions
 
-| Rank | Function | File | {{ template "metric-header" .Type }} | % of Total | Cumulative | Cumulative % |
-|------|----------|------|-------|------------|------------|--------------|
+| Rank | Function | File | {{ template "metric-header" .Type }} | % of Total | Sum % | Cumulative | Cumulative % |
+|------|----------|------|-------|------------|-------|------------|--------------|
 {{- range $i, $fn := .Functions }}
-| {{ add $i 1 }} | ` + "`" + `{{ $fn.Name }}` + "`" + ` | {{ $fn.File }}:{{ $fn.Line }} | {{ template "metric-value" $fn }} | {{ printf "%.2f" $fn.FlatPct }}% | {{ template "metric-cum" $fn }} | {{ printf "%.2f" $fn.CumPct }}% |
+| {{ add $i 1 }} | ` + "`" + `{{ $fn.Name }}` + "`" + ` | {{ $fn.File }}:{{ $fn.Line }} | {{ template "metric-value" $fn }} | {{ printf "%.2f" $fn.FlatPct }}% | {{ printf "%.2f" $fn.SumPct }}% | {{ template "metric-cum" $fn }} | {{ printf "%.2f" $fn.CumPct }}% |
 {{- end }}
 
 {{- range $fn := .Functions }}
-{{- if ne (len $fn.CallStack) 0 }}
+{{- if ne (len $fn.CallPaths) 0 }}
 
 ### {{ $fn.Name }}
 
-**Call Stack:**
-{{- range $i, $call := $fn.CallStack }}
+{{- range $pi, $path := $fn.CallPaths }}
+
+**Call Path #{{ add $pi 1 }}** (weight: {{ $path.Weight }})
+{{- range $i, $call := $path.Stack }}
 {{- if eq $i 0 }}
   → {{ $call }}
 {{- else }}
     {{ $call }}
 {{- end }}
+{{- end }}
+
 {{- end }}
 
 {{- end }}
@@ -158,13 +162,13 @@ func getStatsTemplate(profileType parser.ProfileType) string {
 		return `
 {{- define "stats" }}
 - **Profile Duration:** {{ formatDuration .Stats.TotalDuration.Nanoseconds }}
-- **Total Samples:** {{ .TotalSamples }}
+- **Total CPU Time:** {{ formatDuration .TotalSamples }}
 - **Sample Rate:** {{ .Stats.SampleRate }} Hz
 {{- end }}
 
-{{- define "metric-header" }}CPU Samples{{ end }}
-{{- define "metric-value" }}{{ .Flat }}{{ end }}
-{{- define "metric-cum" }}{{ .Cum }}{{ end }}
+{{- define "metric-header" }}CPU Time{{ end }}
+{{- define "metric-value" }}{{ formatDuration .Flat }}{{ end }}
+{{- define "metric-cum" }}{{ formatDuration .Cum }}{{ end }}
 `
 
 	case parser.TypeHeap:
@@ -200,9 +204,9 @@ func getStatsTemplate(profileType parser.ProfileType) string {
 - **Total Waits:** {{ formatNumber .Stats.TotalWaits }}
 {{- end }}
 
-{{- define "metric-header" }}Contention (ns){{ end }}
-{{- define "metric-value" }}{{ .Flat }}{{ end }}
-{{- define "metric-cum" }}{{ .Cum }}{{ end }}
+{{- define "metric-header" }}Contention Time{{ end }}
+{{- define "metric-value" }}{{ formatDuration .Flat }}{{ end }}
+{{- define "metric-cum" }}{{ formatDuration .Cum }}{{ end }}
 `
 
 	default:

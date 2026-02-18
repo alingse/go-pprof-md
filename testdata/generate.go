@@ -104,6 +104,8 @@ func generateHeapProfile(filename string) error {
 		SampleType: []*profile.ValueType{
 			{Type: "alloc_objects", Unit: "count"},
 			{Type: "alloc_space", Unit: "bytes"},
+			{Type: "inuse_objects", Unit: "count"},
+			{Type: "inuse_space", Unit: "bytes"},
 		},
 		Sample: []*profile.Sample{
 			{
@@ -115,7 +117,7 @@ func generateHeapProfile(filename string) error {
 						},
 					},
 				},
-				Value: []int64{1000, 80000}, // 1000 objects, 80000 bytes
+				Value: []int64{1000, 80000, 200, 16000}, // alloc: 1000 obj/80KB, inuse: 200 obj/16KB
 			},
 			{
 				Location: []*profile.Location{
@@ -126,7 +128,7 @@ func generateHeapProfile(filename string) error {
 						},
 					},
 				},
-				Value: []int64{500, 40000}, // 500 objects, 40000 bytes
+				Value: []int64{500, 40000, 100, 8000}, // alloc: 500 obj/40KB, inuse: 100 obj/8KB
 			},
 		},
 		Location: []*profile.Location{

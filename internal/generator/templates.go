@@ -170,22 +170,36 @@ func FormatBytes(bytes int64) string {
 	return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
 
-// FormatDuration formats nanoseconds into human-readable format
+// FormatDuration formats nanoseconds into human-readable format with precision
 func FormatDuration(nanos int64) string {
-	ms := nanos / 1e6
-	if ms < 1000 {
-		return fmt.Sprintf("%d ms", ms)
+	if nanos == 0 {
+		return "0"
 	}
-	s := ms / 1000
-	if s < 60 {
-		return fmt.Sprintf("%d s", s)
+	absNanos := nanos
+	sign := ""
+	if nanos < 0 {
+		absNanos = -nanos
+		sign = "-"
 	}
+	if absNanos < 1000 {
+		return fmt.Sprintf("%s%dns", sign, absNanos)
+	}
+	if absNanos < 1_000_000 {
+		return fmt.Sprintf("%s%.2fµs", sign, float64(absNanos)/1e3)
+	}
+	if absNanos < 1_000_000_000 {
+		return fmt.Sprintf("%s%.2fms", sign, float64(absNanos)/1e6)
+	}
+	if absNanos < 60_000_000_000 {
+		return fmt.Sprintf("%s%.2fs", sign, float64(absNanos)/1e9)
+	}
+	s := absNanos / 1_000_000_000
 	m := s / 60
 	if m < 60 {
-		return fmt.Sprintf("%d m %d s", m, s%60)
+		return fmt.Sprintf("%s%dm%ds", sign, m, s%60)
 	}
 	h := m / 60
-	return fmt.Sprintf("%d h %d m", h, m%60)
+	return fmt.Sprintf("%s%dh%dm", sign, h, m%60)
 }
 
 // FormatNumber formats large numbers into human-readable format

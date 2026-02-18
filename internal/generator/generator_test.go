@@ -53,25 +53,29 @@ func TestNewGeneratorWithOptions(t *testing.T) {
 func TestGenerate(t *testing.T) {
 	profile := &parser.Profile{
 		Type:        parser.TypeCPU,
-		TotalSamples: 1000,
+		TotalSamples: 300000000, // 300ms in nanoseconds
 		SampleTime:  5 * time.Second,
 		Stats: parser.Stats{
 			TotalDuration:     5 * time.Second,
 			CPUProfileDuration: 5 * time.Second,
-			SampleRate:        100,
+			SampleRate:        1000,
 		},
 		Functions: []parser.Function{
 			{
 				Name:    "main.main",
 				File:    "main.go",
 				Line:    10,
-				Flat:    100,
-				Cum:     200,
-				FlatPct: 10.0,
-				CumPct:  20.0,
+				Flat:    100000000, // 100ms
+				Cum:     200000000, // 200ms
+				FlatPct: 33.33,
+				CumPct:  66.67,
+				SumPct:  33.33,
 				CallStack: []string{
 					"main.main",
 					"runtime.main",
+				},
+				CallPaths: []parser.CallPath{
+					{Stack: []string{"main.main", "runtime.main"}, Weight: 100000000},
 				},
 			},
 		},
@@ -94,6 +98,8 @@ func TestGenerate(t *testing.T) {
 		"## Top cpu Functions",
 		"main.main",
 		"## AI Analysis Request",
+		"CPU Time",
+		"Sum %",
 	}
 
 	for _, expected := range expectedStrings {
@@ -251,6 +257,7 @@ func TestGenerateMutexProfile(t *testing.T) {
 	expectedStrings := []string{
 		"# mutex",
 		"Total Contention Time",
+		"Contention Time",
 		"main.accessSharedData",
 	}
 
@@ -326,11 +333,16 @@ func TestFormatDuration(t *testing.T) {
 		nanos    int64
 		expected string
 	}{
-		{1000, "0 ms"},
-		{1000000, "1 ms"},
-		{5000 * 1000000, "5 s"},
-		{65000 * 1000000, "1 m 5 s"},
-		{3600000 * 1000000, "1 h 0 m"},
+		{0, "0"},
+		{500, "500ns"},
+		{1000, "1.00µs"},
+		{1500000, "1.50ms"},
+		{1000000, "1.00ms"},
+		{820000000, "820.00ms"},
+		{5000000000, "5.00s"},
+		{5200000000, "5.20s"},
+		{65000000000, "1m5s"},
+		{3600000000000, "1h0m"},
 	}
 
 	for _, tt := range tests {

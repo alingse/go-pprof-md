@@ -27,6 +27,12 @@ type Profile struct {
 	Stats       Stats
 }
 
+// CallPath represents a single call path with its weight
+type CallPath struct {
+	Stack  []string
+	Weight int64
+}
+
 // Function represents a function in the profile
 type Function struct {
 	Name      string
@@ -36,7 +42,9 @@ type Function struct {
 	Cum       int64    // Cumulative resource consumption
 	FlatPct   float64  // Percentage of total
 	CumPct    float64  // Percentage of total
-	CallStack []string // Call stack for this function
+	SumPct    float64  // Cumulative sum of FlatPct (running total)
+	CallStack []string // Call stack (heaviest path, for backward compat)
+	CallPaths []CallPath // All call paths with weights
 }
 
 // Stats contains summary statistics

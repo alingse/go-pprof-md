@@ -14,19 +14,21 @@ func main() {
 		SampleType: []*profile.ValueType{
 			{Type: "alloc_objects", Unit: "count"},
 			{Type: "alloc_space", Unit: "bytes"},
+			{Type: "inuse_objects", Unit: "count"},
+			{Type: "inuse_space", Unit: "bytes"},
 		},
 		Sample: []*profile.Sample{
 			{
 				Location: []*profile.Location{
 					{ID: 1, Line: []profile.Line{{Function: &profile.Function{ID: 1, Name: "main.makeSlice", Filename: "main.go", StartLine: 20}, Line: 25}}},
 				},
-				Value: []int64{1000, 80000},
+				Value: []int64{1000, 80000, 200, 16000},
 			},
 			{
 				Location: []*profile.Location{
 					{ID: 2, Line: []profile.Line{{Function: &profile.Function{ID: 2, Name: "main.processData", Filename: "main.go", StartLine: 30}, Line: 35}}},
 				},
-				Value: []int64{500, 40000},
+				Value: []int64{500, 40000, 100, 8000},
 			},
 		},
 		Location: []*profile.Location{
@@ -45,6 +47,8 @@ func main() {
 		SampleType: []*profile.ValueType{
 			{Type: "alloc_objects", Unit: "count"},
 			{Type: "alloc_space", Unit: "bytes"},
+			{Type: "inuse_objects", Unit: "count"},
+			{Type: "inuse_space", Unit: "bytes"},
 		},
 		Sample: []*profile.Sample{
 			{
@@ -52,21 +56,21 @@ func main() {
 				Location: []*profile.Location{
 					{ID: 1, Line: []profile.Line{{Function: &profile.Function{ID: 1, Name: "main.makeSlice", Filename: "main.go", StartLine: 20}, Line: 25}}},
 				},
-				Value: []int64{2000, 160000}, // Doubled!
+				Value: []int64{2000, 160000, 400, 32000}, // Doubled!
 			},
 			{
 				// processData improved
 				Location: []*profile.Location{
 					{ID: 2, Line: []profile.Line{{Function: &profile.Function{ID: 2, Name: "main.processData", Filename: "main.go", StartLine: 30}, Line: 35}}},
 				},
-				Value: []int64{100, 8000}, // Reduced!
+				Value: []int64{100, 8000, 20, 1600}, // Reduced!
 			},
 			{
 				// New function!
 				Location: []*profile.Location{
 					{ID: 3, Line: []profile.Line{{Function: &profile.Function{ID: 3, Name: "main.newFeature", Filename: "main.go", StartLine: 40}, Line: 45}}},
 				},
-				Value: []int64{300, 24000},
+				Value: []int64{300, 24000, 60, 4800},
 			},
 		},
 		Location: []*profile.Location{

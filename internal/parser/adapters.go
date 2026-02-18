@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/google/pprof/profile"
@@ -43,27 +44,30 @@ func convertProfile(prof *profile.Profile, profileType ProfileType) (*Profile, e
 
 		switch profileType {
 		case TypeCPU:
-			value = sample.Value[0] // sample count
+			value = sample.Value[0] * prof.Period // scale to nanoseconds
 			result.TotalSamples += value
 		case TypeHeap:
-			// Heap samples have 2 values: objects, bytes
+			// Heap profiles: 4 values = [alloc_objects, alloc_space, inuse_objects, inuse_space]
+			//                 2 values = [alloc_objects, alloc_space] (inuse stays 0)
 			if len(sample.Value) >= 2 {
-				value = sample.Value[0] // objects
+				result.Stats.AllocObjects += sample.Value[0]
+				result.Stats.AllocBytes += sample.Value[1]
+				value = sample.Value[0]  // objects
 				value2 = sample.Value[1] // bytes
-				result.Stats.AllocObjects += value
-				result.Stats.AllocBytes += value2
-				result.Stats.InUseObjects += value
-				result.Stats.InUseBytes += value2
+			}
+			if len(sample.Value) >= 4 {
+				result.Stats.InUseObjects += sample.Value[2]
+				result.Stats.InUseBytes += sample.Value[3]
 			}
 		case TypeGoroutine:
 			value = sample.Value[0] // count
 			result.Stats.TotalGoroutines += value
 			result.TotalSamples += value
 		case TypeMutex:
-			// Mutex samples have 2 values: contention time, wait count
+			// Mutex samples: [contentions (count), lock_duration (nanoseconds)]
 			if len(sample.Value) >= 2 {
-				value = sample.Value[0] // contention time
-				value2 = sample.Value[1] // wait count
+				value = sample.Value[1]  // lock duration (nanoseconds) - primary metric
+				value2 = sample.Value[0] // contentions count
 				result.Stats.TotalContentionTime += value
 				result.Stats.TotalWaits += value2
 			}
@@ -97,8 +101,9 @@ func convertProfile(prof *profile.Profile, profileType ProfileType) (*Profile, e
 					functionData[fn.ID] = data
 				}
 
-				// Flat value only for the leaf (last) location
-				isLeaf := (i == len(sample.Location)-1)
+				// Flat value only for the leaf (first) location
+				// In pprof, Location[0] is the leaf (innermost frame)
+				isLeaf := (i == 0)
 
 				// Use bytes for heap profiles as primary metric
 				metricValue := value
@@ -108,6 +113,11 @@ func convertProfile(prof *profile.Profile, profileType ProfileType) (*Profile, e
 
 				if isLeaf {
 					data.Flat += metricValue
+					// Track this call path for the leaf function
+					data.CallPaths = append(data.CallPaths, CallPath{
+						Stack:  callStack,
+						Weight: metricValue,
+					})
 				}
 				data.Cum += metricValue
 			}
@@ -134,13 +144,26 @@ func convertProfile(prof *profile.Profile, profileType ProfileType) (*Profile, e
 			total = result.TotalSamples
 		}
 
+		// Merge duplicate call paths and sort by weight descending
+		callPaths := mergeCallPaths(data.CallPaths)
+		sort.Slice(callPaths, func(i, j int) bool {
+			return callPaths[i].Weight > callPaths[j].Weight
+		})
+
+		// Set CallStack to the heaviest path for backward compatibility
+		callStack := data.CallStack
+		if len(callPaths) > 0 {
+			callStack = callPaths[0].Stack
+		}
+
 		fn := Function{
 			Name:      data.Name,
 			File:      data.File,
 			Line:      data.Line,
 			Flat:      data.Flat,
 			Cum:       data.Cum,
-			CallStack: data.CallStack,
+			CallStack: callStack,
+			CallPaths: callPaths,
 		}
 
 		if total > 0 {
@@ -151,19 +174,26 @@ func convertProfile(prof *profile.Profile, profileType ProfileType) (*Profile, e
 		result.Functions = append(result.Functions, fn)
 	}
 
-	// Sort by cumulative value descending
+	// Sort by flat value descending (matches `go tool pprof -text` default)
 	sort.Slice(result.Functions, func(i, j int) bool {
-		return result.Functions[i].Cum > result.Functions[j].Cum
+		return result.Functions[i].Flat > result.Functions[j].Flat
 	})
+
+	// Compute cumulative sum percentage (SumPct)
+	sumPct := 0.0
+	for i := range result.Functions {
+		sumPct += result.Functions[i].FlatPct
+		result.Functions[i].SumPct = sumPct
+	}
 
 	// Set common stats
 	result.Stats.TotalSamples = result.TotalSamples
 	result.Stats.TotalDuration = time.Duration(prof.DurationNanos)
 	result.Stats.CPUProfileDuration = time.Duration(prof.DurationNanos)
 
-	// Set sample rate for CPU profiles
-	if profileType == TypeCPU && prof.PeriodType != nil {
-		result.Stats.SampleRate = prof.Period
+	// Set sample rate for CPU profiles (convert period in ns to Hz)
+	if profileType == TypeCPU && prof.Period > 0 {
+		result.Stats.SampleRate = 1e9 / prof.Period
 	}
 
 	return result, nil
@@ -178,6 +208,7 @@ type FunctionData struct {
 	Flat      int64
 	Cum       int64
 	CallStack []string
+	CallPaths []CallPath
 }
 
 // buildCallStackFromSample builds a call stack from a sample
@@ -202,6 +233,28 @@ func buildCallStackFromSample(sample *profile.Sample, funcMap map[uint64]*profil
 	}
 
 	return stack
+}
+
+// mergeCallPaths merges duplicate call paths by summing their weights
+func mergeCallPaths(paths []CallPath) []CallPath {
+	if len(paths) == 0 {
+		return nil
+	}
+	merged := make(map[string]*CallPath)
+	for _, p := range paths {
+		key := strings.Join(p.Stack, "\x00")
+		if existing, ok := merged[key]; ok {
+			existing.Weight += p.Weight
+		} else {
+			cp := CallPath{Stack: p.Stack, Weight: p.Weight}
+			merged[key] = &cp
+		}
+	}
+	result := make([]CallPath, 0, len(merged))
+	for _, cp := range merged {
+		result = append(result, *cp)
+	}
+	return result
 }
 
 // detectProfileTypeFromSampleType detects profile type from sample type

@@ -207,8 +207,8 @@ func (g *DiffGenerator) getTemplate() (*template.Template, error) {
 | Metric | Base | New | Delta |
 |--------|------|------|-------|
 {{- if eq .Type "cpu" }}
-| Total Samples | {{ .BaseTotal }} | {{ .NewTotal }} | {{ FormatDelta .TotalDelta }} |
-| Duration | {{ .BaseStats.TotalDuration }} | {{ .NewStats.TotalDuration }} | - |
+| Total CPU Time | {{ formatDuration .BaseTotal }} | {{ formatDuration .NewTotal }} | {{ formatDuration .TotalDelta }} |
+| Duration | {{ formatDuration .BaseStats.TotalDuration.Nanoseconds }} | {{ formatDuration .NewStats.TotalDuration.Nanoseconds }} | - |
 {{- else if eq .Type "heap" }}
 | Allocated Bytes | {{ FormatBytes .BaseStats.AllocBytes }} | {{ FormatBytes .NewStats.AllocBytes }} | {{ FormatDelta (subtract .NewStats.AllocBytes .BaseStats.AllocBytes) }} |
 | Allocated Objects | {{ FormatNumber .BaseStats.AllocObjects }} | {{ FormatNumber .NewStats.AllocObjects }} | {{ FormatDelta (subtract .NewStats.AllocObjects .BaseStats.AllocObjects) }} |
@@ -217,7 +217,7 @@ func (g *DiffGenerator) getTemplate() (*template.Template, error) {
 {{- else if eq .Type "goroutine" }}
 | Total Goroutines | {{ FormatNumber .BaseStats.TotalGoroutines }} | {{ FormatNumber .NewStats.TotalGoroutines }} | {{ FormatDelta (subtract .NewStats.TotalGoroutines .BaseStats.TotalGoroutines) }} |
 {{- else if eq .Type "mutex" }}
-| Contention Time | {{ .BaseStats.TotalContentionTime }} | {{ .NewStats.TotalContentionTime }} | {{ FormatDelta (subtract .NewStats.TotalContentionTime .BaseStats.TotalContentionTime) }} |
+| Contention Time | {{ formatDuration .BaseStats.TotalContentionTime }} | {{ formatDuration .NewStats.TotalContentionTime }} | {{ formatDuration (subtract .NewStats.TotalContentionTime .BaseStats.TotalContentionTime) }} |
 | Total Waits | {{ FormatNumber .BaseStats.TotalWaits }} | {{ FormatNumber .NewStats.TotalWaits }} | {{ FormatDelta (subtract .NewStats.TotalWaits .BaseStats.TotalWaits) }} |
 {{- end }}
 
@@ -263,12 +263,13 @@ Focus on actionable insights to understand the performance change.
 `
 
 	funcs := template.FuncMap{
-		"add":          func(a, b int) int { return a + b },
-		"subtract":     func(a, b int64) int64 { return a - b },
-		"abs":          abs,
-		"FormatBytes":  FormatBytes,
-		"FormatNumber": FormatNumber,
-		"FormatDelta":  FormatDelta,
+		"add":             func(a, b int) int { return a + b },
+		"subtract":        func(a, b int64) int64 { return a - b },
+		"abs":             abs,
+		"FormatBytes":     FormatBytes,
+		"FormatNumber":    FormatNumber,
+		"FormatDelta":     FormatDelta,
+		"formatDuration":  FormatDuration,
 	}
 
 	return template.New("diff").Funcs(funcs).Parse(tmpl)
